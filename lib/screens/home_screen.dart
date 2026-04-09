@@ -5,7 +5,8 @@ import 'package:geolocator/geolocator.dart';
 import '../utils/location_helper.dart';
 import '../utils/distance_helper.dart';
 import 'salon_detail_screen.dart';
-import 'booking_history_screen.dart'; // ✅ ADDED
+import 'booking_history_screen.dart';
+import 'owner_dashboard.dart';
 
 double userLat = 0;
 double userLng = 0;
@@ -101,9 +102,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // ✅ UPDATED ACTIONS
         actions: [
-          const Icon(Icons.notifications_none, color: Colors.black),
 
-          const SizedBox(width: 10),
+          // 👇 ADD THIS
+          IconButton(
+            icon: const Icon(Icons.dashboard, color: Colors.black),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const OwnerDashboard(),
+                ),
+              );
+            },
+          ),
+
 
           // 📋 BOOKING HISTORY BUTTON
           IconButton(
@@ -119,7 +131,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
 
           const SizedBox(width: 10),
+
         ],
+
       ),
 
       body: Column(

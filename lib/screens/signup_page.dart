@@ -20,9 +20,9 @@ class _SignupPageState extends State<SignupPage> {
     final password = passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Enter email & password")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Enter email & password")));
       return;
     }
 
@@ -41,19 +41,16 @@ class _SignupPageState extends State<SignupPage> {
         MaterialPageRoute(builder: (_) => LoginPage()),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Signup"),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: Text("Signup"), centerTitle: true),
 
       body: Container(
         decoration: const BoxDecoration(
@@ -77,8 +74,11 @@ class _SignupPageState extends State<SignupPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-
-                      Icon(Icons.person_add, size: 50, color: Colors.deepPurple),
+                      Icon(
+                        Icons.person_add,
+                        size: 50,
+                        color: Colors.deepPurple,
+                      ),
 
                       SizedBox(height: 10),
 
@@ -94,9 +94,7 @@ class _SignupPageState extends State<SignupPage> {
 
                       Text(
                         "Create your account",
-                        style: TextStyle(
-                          color: Colors.grey,
-                        ),
+                        style: TextStyle(color: Colors.grey),
                       ),
 
                       SizedBox(height: 20),
@@ -153,8 +151,7 @@ class _SignupPageState extends State<SignupPage> {
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(
-                                builder: (_) => SignupPage()),
+                            MaterialPageRoute(builder: (_) => SignupPage()),
                           );
                         },
                         child: const Text("New user? Sign Up"),

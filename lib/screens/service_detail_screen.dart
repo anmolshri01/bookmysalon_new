@@ -15,14 +15,15 @@ class Review {
 }
 
 class ServiceDetailScreen extends StatefulWidget {
-
   final String serviceName;
   final String salonName;
+  final int salonId; // ✅ added
 
   const ServiceDetailScreen({
     super.key,
     required this.serviceName,
     required this.salonName,
+    required this.salonId, // ✅ added
   });
 
   @override
@@ -31,7 +32,6 @@ class ServiceDetailScreen extends StatefulWidget {
 }
 
 class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
-
   List<Review> reviews = [];
 
   bool get canReview {
@@ -40,7 +40,6 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
 
   // ⭐ ADD REVIEW
   void showAddReviewDialog() {
-
     if (!canReview) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -52,80 +51,80 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
 
     final nameController = TextEditingController();
     final commentController = TextEditingController();
+
     int rating = 5;
 
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text("Review for ${widget.serviceName}"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: "Your Name",
-                ),
-              ),
-
-              TextField(
-                controller: commentController,
-                decoration: const InputDecoration(
-                  labelText: "Your Review",
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              Row(
-                children: List.generate(5, (index) {
-                  return IconButton(
-                    icon: Icon(
-                      Icons.star,
-                      color: index < rating
-                          ? Colors.orange
-                          : Colors.grey,
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text("Review for ${widget.serviceName}"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: "Your Name",
                     ),
-                    onPressed: () {
-                      setState(() {
-                        rating = index + 1;
-                      });
-                    },
-                  );
-                }),
+                  ),
+                  TextField(
+                    controller: commentController,
+                    decoration: const InputDecoration(
+                      labelText: "Your Review",
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // ⭐ STAR RATING
+                  Row(
+                    children: List.generate(5, (index) {
+                      return IconButton(
+                        icon: Icon(
+                          Icons.star,
+                          color: index < rating
+                              ? Colors.orange
+                              : Colors.grey,
+                        ),
+                        onPressed: () {
+                          setDialogState(() {
+                            rating = index + 1;
+                          });
+                        },
+                      );
+                    }),
+                  ),
+                ],
               ),
-            ],
-          ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (nameController.text.isNotEmpty &&
+                        commentController.text.isNotEmpty) {
+                      setState(() {
+                        reviews.add(
+                          Review(
+                            name: nameController.text,
+                            rating: rating,
+                            comment: commentController.text,
+                          ),
+                        );
+                      });
 
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
-            ),
-
-            ElevatedButton(
-              onPressed: () {
-                if (nameController.text.isNotEmpty &&
-                    commentController.text.isNotEmpty) {
-
-                  setState(() {
-                    reviews.add(
-                      Review(
-                        name: nameController.text,
-                        rating: rating,
-                        comment: commentController.text,
-                      ),
-                    );
-                  });
-
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text("Submit"),
-            ),
-          ],
+                      Navigator.pop(context);
+                    }
+                  },
+                  child: const Text("Submit"),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -133,19 +132,15 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.serviceName),
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
-            // 🧾 TITLE
             Text(
               widget.serviceName,
               style: const TextStyle(
@@ -156,7 +151,6 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
 
             const SizedBox(height: 10),
 
-            // ℹ️ DESCRIPTION
             const Text(
               "Professional service with expert staff and premium products.",
             ),
@@ -174,7 +168,6 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
                 canReview
                     ? TextButton(
                   onPressed: showAddReviewDialog,
@@ -192,9 +185,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
             // ⭐ REVIEWS LIST
             Expanded(
               child: reviews.isEmpty
-                  ? const Center(
-                child: Text("No reviews yet"),
-              )
+                  ? const Center(child: Text("No reviews yet"))
                   : ListView.builder(
                 itemCount: reviews.length,
                 itemBuilder: (context, index) {
@@ -204,14 +195,11 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                     leading: const CircleAvatar(
                       child: Icon(Icons.person),
                     ),
-
                     title: Text(review.name),
-
                     subtitle: Column(
                       crossAxisAlignment:
                       CrossAxisAlignment.start,
                       children: [
-
                         Row(
                           children: List.generate(
                             review.rating,
@@ -222,9 +210,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                             ),
                           ),
                         ),
-
                         const SizedBox(height: 4),
-
                         Text(review.comment),
                       ],
                     ),
@@ -242,8 +228,9 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (_) => SlotBookingScreen(
-                        salonName: widget.salonName,   // ✅ correct
-                        serviceName: widget.serviceName, // ✅ correct
+                        salonName: widget.salonName,
+                        serviceName: widget.serviceName,
+                        salonId: widget.salonId, // ✅ FIXED
                       ),
                     ),
                   );
