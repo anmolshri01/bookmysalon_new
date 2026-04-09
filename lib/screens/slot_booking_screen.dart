@@ -4,11 +4,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class SlotBookingScreen extends StatefulWidget {
   final String salonName;
   final String serviceName;
+  final int salonId; // ✅ REQUIRED
 
   const SlotBookingScreen({
     super.key,
     required this.salonName,
     required this.serviceName,
+    required this.salonId,
   });
 
   @override
@@ -16,7 +18,6 @@ class SlotBookingScreen extends StatefulWidget {
 }
 
 class _SlotBookingScreenState extends State<SlotBookingScreen> {
-
   DateTime? selectedDate;
   String? selectedTime;
   bool isLoading = false;
@@ -62,12 +63,16 @@ class _SlotBookingScreenState extends State<SlotBookingScreen> {
 
       final user = supabase.auth.currentUser;
 
+      if (user == null) {
+        throw Exception("User not logged in");
+      }
+
       await supabase.from('bookings').insert({
-        'salon_id': 1, // 🔥 TEMP (later dynamic)
-        'user_id': user?.id,
+        'salon_id': widget.salonId, // ✅ dynamic
+        'user_id': user.id,         // ✅ correct
         'services': widget.serviceName,
-        'total_price': 500, // 🔥 later dynamic
-        'booking_date': selectedDate.toString(),
+        'total_price': 500, // 🔥 you can make dynamic later
+        'booking_date': selectedDate!.toIso8601String(),
         'booking_time': selectedTime,
       });
 
@@ -89,7 +94,6 @@ class _SlotBookingScreenState extends State<SlotBookingScreen> {
           ],
         ),
       );
-
     } catch (e) {
       setState(() => isLoading = false);
 
@@ -105,13 +109,11 @@ class _SlotBookingScreenState extends State<SlotBookingScreen> {
       appBar: AppBar(
         title: Text(widget.serviceName),
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // 🏷 SALON NAME
             Text(
               widget.salonName,
@@ -159,7 +161,7 @@ class _SlotBookingScreenState extends State<SlotBookingScreen> {
 
             const SizedBox(height: 20),
 
-            // ⏰ TIME SLOT
+            // ⏰ TIME SLOTS
             const Text(
               "Select Time",
               style: TextStyle(fontWeight: FontWeight.bold),
@@ -198,7 +200,8 @@ class _SlotBookingScreenState extends State<SlotBookingScreen> {
                 onPressed: isLoading
                     ? null
                     : () {
-                  if (selectedDate == null || selectedTime == null) {
+                  if (selectedDate == null ||
+                      selectedTime == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text("Select date & time"),
@@ -209,9 +212,16 @@ class _SlotBookingScreenState extends State<SlotBookingScreen> {
 
                   saveBooking();
                 },
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 15),
+                  backgroundColor: Colors.deepPurple,
+                ),
                 child: isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text("Confirm Booking"),
+                    : const Text(
+                  "Confirm Booking",
+                  style: TextStyle(fontSize: 16),
+                ),
               ),
             ),
           ],
