@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class SlotBookingScreen extends StatefulWidget {
   final String salonName;
   final String serviceName;
-  final int salonId; // ✅ REQUIRED
+  final String salonId;
 
   const SlotBookingScreen({
     super.key,

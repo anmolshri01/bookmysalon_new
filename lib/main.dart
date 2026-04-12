@@ -1,16 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/login_page.dart';
-import 'package:geocoding/geocoding.dart';
-import '../utils/location_helper.dart';
 
-
-
-
-
-
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // 🔥 MUST for async init
 
   await Supabase.initialize(
     url: 'https://tfclrffhkrqrtsvjwnxu.supabase.co',
@@ -20,16 +13,22 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
-final supabase = Supabase.instance.client;
-
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'BookMySalon',
       debugShowCheckedModeBanner: false,
-      home: LoginPage(),
+
+      // 🔥 FIX: Prevent rebuild issues on web
+      theme: ThemeData(
+        primarySwatch: Colors.purple,
+        useMaterial3: true,
+      ),
+
+      home: const LoginPage(),
     );
   }
 }

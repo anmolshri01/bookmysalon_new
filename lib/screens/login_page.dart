@@ -1,8 +1,10 @@
+import 'package:bookmysalon/screens/owner_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'home_screen.dart';
 import 'signup_page.dart';
-import '../utils/app_colors.dart';
+import 'home_screen.dart';
+import 'owner_dashboard.dart';
+
 final supabase = Supabase.instance.client;
 
 class LoginPage extends StatefulWidget {
@@ -13,8 +15,10 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+
+  get userData => null;
 
   Future<void> loginUser() async {
     final email = emailController.text.trim();
@@ -22,48 +26,74 @@ class _LoginPageState extends State<LoginPage> {
 
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Enter email and password')),
+        const SnackBar(content: Text("Enter email & password")),
       );
       return;
     }
 
     try {
+      // ✅ STEP 1: LOGIN
       final response = await supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
 
-      if (response.user != null) {
+      final user = response.user;
+
+      if (user == null) {
+        throw Exception("Login failed");
+      }
+
+      print("AUTH USER ID: ${user.id}");
+      print("AUTH EMAIL: ${user.email}");
+
+      // ✅ STEP 2: FETCH USER DATA FROM TABLE
+      final userData = await supabase
+          .from('users')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
+
+      print("USER DATA: $userData");
+
+      // ❌ HANDLE MISSING USER RECORD
+      if (userData == null) {
+        throw Exception("User record missing. Please signup again.");
+      }
+
+      final role = userData['role'];
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Login successful")),
+      );
+
+      // ✅ STEP 3: REDIRECT BASED ON ROLE
+      if (role == 'owner') {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => HomeScreen()),
+          MaterialPageRoute(builder: (_) => const OwnerWrapper()),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login failed')),
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(content: Text("Login failed: $e")),
       );
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Login"),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: Text("Login"), centerTitle: true),
+
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              AppColors.deepDark,
-              AppColors.softBlackGrey,
-            ],
+            colors: [Colors.deepPurple, Colors.purple],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -82,7 +112,6 @@ class _LoginPageState extends State<LoginPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-
                       Icon(Icons.login, size: 50, color: Colors.deepPurple),
 
                       SizedBox(height: 10),
@@ -92,15 +121,6 @@ class _LoginPageState extends State<LoginPage> {
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      SizedBox(height: 5),
-
-                      Text(
-                        "Welcome back 👋",
-                        style: TextStyle(
-                          color: Colors.grey,
                         ),
                       ),
 
@@ -142,11 +162,10 @@ class _LoginPageState extends State<LoginPage> {
                           onPressed: loginUser,
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 14),
+                            backgroundColor: Colors.deepPurple,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            backgroundColor: Colors.deepPurple,
-                            foregroundColor: Colors.white,
                           ),
                           child: const Text("Login"),
                         ),
@@ -154,13 +173,12 @@ class _LoginPageState extends State<LoginPage> {
 
                       const SizedBox(height: 10),
 
-                      // SIGNUP BUTTON
+                      // SIGNUP NAVIGATION
                       TextButton(
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(
-                                builder: (_) => SignupPage()),
+                            MaterialPageRoute(builder: (_) => SignupPage()),
                           );
                         },
                         child: const Text("New user? Sign Up"),

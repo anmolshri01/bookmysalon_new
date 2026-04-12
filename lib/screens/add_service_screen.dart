@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AddServiceScreen extends StatefulWidget {
-  final Map<String, dynamic> salon;
-
+  final String salonId;
   const AddServiceScreen({
     super.key,
-    required this.salon,
+    required this.salonId,
   });
 
   @override
@@ -27,7 +26,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     return supabase
         .from('services')
         .stream(primaryKey: ['id'])
-        .eq('salon_id', widget.salon['id']);
+        .eq('salon_id', widget.salonId);
   }
 
   // ✅ ADD SERVICE FUNCTION (UPDATED)
@@ -58,7 +57,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       await supabase.from('services').insert({
         'name': name,
         'price': price,
-        'salon_id': widget.salon['id'], // ✅ BEST approach
+        'salon_id': widget.salonId,
         'image': 'https://via.placeholder.com/150'
       });
 

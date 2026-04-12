@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'slot_booking_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/app_data.dart';
 
 class Review {
@@ -15,30 +15,109 @@ class Review {
 }
 
 class ServiceDetailScreen extends StatefulWidget {
-  final String serviceName;
+  final Map<String, dynamic> service;
   final String salonName;
-  final int salonId; // ✅ added
+  final String salonId;
 
   const ServiceDetailScreen({
     super.key,
-    required this.serviceName,
+    required this.service,
     required this.salonName,
-    required this.salonId, // ✅ added
+    required this.salonId,
   });
 
   @override
-  State<ServiceDetailScreen> createState() =>
-      _ServiceDetailScreenState();
+  State<ServiceDetailScreen> createState() => _ServiceDetailScreenState();
 }
 
 class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
   List<Review> reviews = [];
+  final supabase = Supabase.instance.client;
+
+  bool isSelected = false; // ✅ Fixed: use bool instead of list.contains()
+  double totalPrice = 0;
 
   bool get canReview {
-    return AppData.bookedServices.contains(widget.serviceName);
+    return AppData.bookedServices.contains(widget.service['name']);
   }
 
-  // ⭐ ADD REVIEW
+  // ✅ Fixed toggle using bool flag
+  void toggleService() {
+    setState(() {
+      if (isSelected) {
+        isSelected = false;
+        totalPrice -= (widget.service['price'] as num?)?.toDouble() ?? 0;
+      } else {
+        isSelected = true;
+        totalPrice += (widget.service['price'] as num?)?.toDouble() ?? 0;
+      }
+    });
+  }
+
+  // ✅ Booking function
+  Future<void> bookService() async {
+    final user = supabase.auth.currentUser;
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please login first")),
+      );
+      return;
+    }
+
+    if (!isSelected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Select service first")),
+      );
+      return;
+    }
+
+    try {
+      // ✅ Insert booking
+      final booking = await supabase
+          .from('bookings')
+          .insert({
+        'user_id': user.id,
+        'salon_id': widget.salonId,
+        'total_price': totalPrice,
+        'booking_date': DateTime.now().toIso8601String(),
+      })
+          .select()
+          .single();
+
+      final bookingId = booking['id'];
+
+      // ✅ Insert booking service
+      await supabase.from('booking_services').insert({
+        'booking_id': bookingId,
+        'service_id': widget.service['id'],
+        'price': widget.service['price'],
+      });
+
+      // ✅ Update AppData so user can review this service
+      AppData.bookedServices.add(widget.service['name']);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Booking Successful ✅")),
+        );
+      }
+
+      setState(() {
+        isSelected = false;
+        totalPrice = 0;
+      });
+    } catch (e) {
+      debugPrint("Booking error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error: $e")),
+        );
+      }
+    }
+  }
+
+  // ✅ Review dialog
   void showAddReviewDialog() {
     if (!canReview) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -51,7 +130,6 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
 
     final nameController = TextEditingController();
     final commentController = TextEditingController();
-
     int rating = 5;
 
     showDialog(
@@ -60,43 +138,39 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text("Review for ${widget.serviceName}"),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameController,
-                    decoration: const InputDecoration(
-                      labelText: "Your Name",
+              title: Text("Review for ${widget.service['name']}"),
+              content: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration:
+                      const InputDecoration(labelText: "Your Name"),
                     ),
-                  ),
-                  TextField(
-                    controller: commentController,
-                    decoration: const InputDecoration(
-                      labelText: "Your Review",
+                    TextField(
+                      controller: commentController,
+                      decoration:
+                      const InputDecoration(labelText: "Your Review"),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // ⭐ STAR RATING
-                  Row(
-                    children: List.generate(5, (index) {
-                      return IconButton(
-                        icon: Icon(
-                          Icons.star,
-                          color: index < rating
-                              ? Colors.orange
-                              : Colors.grey,
-                        ),
-                        onPressed: () {
-                          setDialogState(() {
-                            rating = index + 1;
-                          });
-                        },
-                      );
-                    }),
-                  ),
-                ],
+                    Row(
+                      children: List.generate(5, (index) {
+                        return IconButton(
+                          icon: Icon(
+                            Icons.star,
+                            color: index < rating
+                                ? Colors.orange
+                                : Colors.grey,
+                          ),
+                          onPressed: () {
+                            setDialogState(() {
+                              rating = index + 1;
+                            });
+                          },
+                        );
+                      }),
+                    ),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -105,20 +179,20 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    if (nameController.text.isNotEmpty &&
-                        commentController.text.isNotEmpty) {
-                      setState(() {
-                        reviews.add(
-                          Review(
-                            name: nameController.text,
-                            rating: rating,
-                            comment: commentController.text,
-                          ),
-                        );
-                      });
-
-                      Navigator.pop(context);
+                    if (nameController.text.isEmpty ||
+                        commentController.text.isEmpty) {
+                      return;
                     }
+                    setState(() {
+                      reviews.add(
+                        Review(
+                          name: nameController.text,
+                          rating: rating,
+                          comment: commentController.text,
+                        ),
+                      );
+                    });
+                    Navigator.pop(context);
                   },
                   child: const Text("Submit"),
                 ),
@@ -132,9 +206,11 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final service = widget.service;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.serviceName),
+        title: Text(service['name'] ?? 'Service Detail'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(12),
@@ -142,7 +218,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              widget.serviceName,
+              service['name'] ?? '',
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -151,93 +227,80 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen> {
 
             const SizedBox(height: 10),
 
-            const Text(
-              "Professional service with expert staff and premium products.",
+            Text(
+              "₹${service['price']}",
+              style: const TextStyle(fontSize: 18),
             ),
 
             const SizedBox(height: 20),
 
-            // ⭐ REVIEW HEADER
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Reviews",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                canReview
-                    ? TextButton(
-                  onPressed: showAddReviewDialog,
-                  child: const Text("Write Review"),
-                )
-                    : const Text(
-                  "Book service to review",
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ],
+            // ✅ Add/Remove button
+            ElevatedButton(
+              onPressed: toggleService,
+              child: Text(isSelected ? "Remove Service" : "Add Service"),
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 20),
 
-            // ⭐ REVIEWS LIST
-            Expanded(
-              child: reviews.isEmpty
-                  ? const Center(child: Text("No reviews yet"))
-                  : ListView.builder(
-                itemCount: reviews.length,
-                itemBuilder: (context, index) {
-                  final review = reviews[index];
-
-                  return ListTile(
-                    leading: const CircleAvatar(
-                      child: Icon(Icons.person),
-                    ),
-                    title: Text(review.name),
-                    subtitle: Column(
-                      crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: List.generate(
-                            review.rating,
-                                (index) => const Icon(
-                              Icons.star,
-                              color: Colors.orange,
-                              size: 16,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(review.comment),
-                      ],
-                    ),
-                  );
-                },
-              ),
+            Text(
+              "Total: ₹$totalPrice",
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
 
-            // 🔥 BOOK BUTTON
+            const SizedBox(height: 20),
+
+            // ✅ Book button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => SlotBookingScreen(
-                        salonName: widget.salonName,
-                        serviceName: widget.serviceName,
-                        salonId: widget.salonId, // ✅ FIXED
-                      ),
-                    ),
-                  );
-                },
+                onPressed: bookService,
                 child: const Text("Book Now"),
               ),
             ),
+
+            const SizedBox(height: 20),
+
+            // ✅ Review button
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: showAddReviewDialog,
+                icon: const Icon(Icons.star_outline),
+                label: const Text("Add Review"),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // ✅ Reviews list
+            if (reviews.isNotEmpty) ...[
+              const Text(
+                "Reviews",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: reviews.length,
+                  itemBuilder: (context, index) {
+                    final review = reviews[index];
+                    return Card(
+                      child: ListTile(
+                        title: Text(review.name),
+                        subtitle: Text(review.comment),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.star, color: Colors.orange, size: 16),
+                            Text(review.rating.toString()),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ],
         ),
       ),
